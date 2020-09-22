@@ -173,11 +173,31 @@ class Env:
         ##############################################
         '''
         E said Kathryn in piazza said we don't have to change our above safe_wander?
+        So I pasted from above
         '''
         # self.safe_wander(flock)
         ###################################################
-        self.safe_wander(flock)
+        if flock:
+            x_move = random.randint(-1, 1)
+            y_move = random.randint(-1, 1)
+            # Since bots must move in some direction, ensure that (x_move, y_move) != (0,0)
+            while (x_move, y_move) == (0, 0):
+                x_move = random.randint(-1, 1)
+                y_move = random.randint(-1, 1)
+            for bot in self.bots:
+                self.move_bot(bot, (x_move, y_move))
 
+        if not flock:
+            for bot in self.bots:
+                x_move = random.randint(-1, 1)
+                y_move = random.randint(-1, 1)
+                # Since bot must move in some direction, ensure that (x_move, y_move) != (0,0)
+                while (x_move, y_move) == (0, 0):
+                    x_move = random.randint(-1, 1)
+                    y_move = random.randint(-1, 1)
+                self.move_bot(bot, (x_move, y_move))
+
+        self.grid = self.update_grid()
 
     def aggregate_sense(self, sense_r):
         '''

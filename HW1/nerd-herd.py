@@ -151,6 +151,8 @@ class Env:
         Afterwards, disperse. 
         Display the grid after each of these steps, including after each safe wander interation.
         '''
+        print("Initial grid")
+        self.display_grid()
         self.aggregate(loc)
         print(f"Aggregate to {loc}")
         self.display_grid()
@@ -164,29 +166,50 @@ class Env:
         print("Disperse")
         self.display_grid()
 
+    def identify_flocks(self):
+        '''
+        This is for the sense case in which bots aggregate into different flocks.
+        Builds a dictionary that identifies which bots are a member of which flock, and sorts them appropriately.
+        This allows each flock to take an independent random action in safe_wander_sense.
+        Here, 'same flock' is defined as being on the same grid location.
+        '''
+        flocks = dict()
+        for bot in self.bots:
+            flock_location = (bot.x, bot.y)
+            if flock_location not in flocks:
+                # If this flock hasn't been created yet, create a key, with a set as a value to which we can add bots
+                flocks[flock_location] = set()
+            # Add bots to the correct flock
+            flocks[flock_location].add(bot)
+        return flocks
+
     def safe_wander_sense(self, flock=False):
         '''
         Move each bot one step. 
         If flock, all bots in a flock move in same random direction.
         Otherwise, each bot moves in its own random direction
         '''
-        ##############################################
-        '''
-        E said Kathryn in piazza said we don't have to change our above safe_wander?
-        So I pasted from above
-        '''
-        # self.safe_wander(flock)
-        ###################################################
+
+        # In this case, we don't assume all bots are in the same flock, since in the aggregate_sense() method,
+        # they may not converge to a single location as they do for the centralized aggregate() method.
+        # So to allow each flock to move in its own random direction, we define a helper method above to
+        # sort out which bots are in which flock. And then each flock picks its own random direction to move in,
+        # with all bots in that flock moving in that same random direction.
         if flock:
-            x_move = random.randint(-1, 1)
-            y_move = random.randint(-1, 1)
-            # Since bots must move in some direction, ensure that (x_move, y_move) != (0,0)
-            while (x_move, y_move) == (0, 0):
+            flocks = self.identify_flocks()
+            for flock_location in flocks.keys():
+                # Pick a new random action for each flock
                 x_move = random.randint(-1, 1)
                 y_move = random.randint(-1, 1)
-            for bot in self.bots:
-                self.move_bot(bot, (x_move, y_move))
+                # Since bots must move in some direction, ensure that (x_move, y_move) != (0,0)
+                while (x_move, y_move) == (0, 0):
+                    x_move = random.randint(-1, 1)
+                    y_move = random.randint(-1, 1)
+                for bot in flocks[flock_location]:
+                    self.move_bot(bot, (x_move, y_move))
 
+        # Since the desired behavior here is the same as in the centralized case (neither requires bot actions
+        # conditioned on other bots), the implementation here is the same.
         if not flock:
             for bot in self.bots:
                 x_move = random.randint(-1, 1)
@@ -280,11 +303,6 @@ class Env:
         '''
         Move all bots away from their respective flock's centroid.
         '''
-
-        ########## FIRST DO MY ANSWER TRY #################
-        ##### HAD TO ADD IN sense_r AS PARAM TO DO THIS ########
-        # Move in that direction...but for how many steps???
-
         # Added a sense_r for generality but set to 1 since generally this is called after aggregate_sense is called,
         # so all are in their local flocks
 
@@ -340,11 +358,6 @@ class Env:
 
         # Update grid after all bots have moved
         self.grid = self.update_grid()
-        ######################################################
-
-        ###### NOW DO based on E comments: said Kathryn in Piazza said we don't have to change our disperse_sense?? ###
-        # self.disperse()
-        #############################################
 
     def flock_sense(self, sense_r, t=5):
         '''
@@ -353,9 +366,11 @@ class Env:
         Afterwards, disperse flock/s beyond aggregation centroid/s. 
         Display the grid after each of these steps, including after each safe wander interation.
         '''
+        print("Initial grid")
+        self.display_grid()
         self.aggregate_sense(sense_r=sense_r)
         print(f'Aggregate using sensing radius {sense_r}')
-        env.display_grid()
+        self.display_grid()
 
         for timestep in range(t):
             self.safe_wander_sense(flock=True)
@@ -393,36 +408,150 @@ class Env:
         print()
 
 
-if __name__ == "__main__":
-    # bot1 = Robot(1,2)
-    # bot2 = Robot(0,0)
-    # bot3 = Robot(3,0)
-    # bot4 = Robot(3,0)
-    #
-    # bots = [bot1, bot2, bot3, bot4]
-    #
-    # env = Env(bots, 4)
+def test_1a_1():
+    bot1 = Robot(1,2)
+    bot2 = Robot(0,0)
+    bot3 = Robot(3,0)
+    bot4 = Robot(3,0)
 
-    #### CH test ####
+    bots = [bot1, bot2, bot3, bot4]
+
+    env = Env(bots, 4)
+
+    env.flock((2,2))
+
+
+def test_1a_2():
     bot1 = Robot(1,2)
     bot2 = Robot(8,8)
-    bot3 = Robot(8,8)
+    bot3 = Robot(8,9)
     bot4 = Robot(4,4)
-    bot5 = Robot(2, 6)
-    bot6 = Robot(0, 7)
+    bot5 = Robot(2,6)
+    bot6 = Robot(0,7)
     bot7 = Robot(7,0)
     bot8 = Robot(8,0)
     bot9 = Robot(1,8)
+
     bots = [bot1, bot2, bot3, bot4, bot5, bot6, bot7, bot8, bot9]
-    env = Env(bots, 9)
-    ##################
 
-    env.display_grid()
+    env = Env(bots, 10)
 
-    import ipdb; ipdb.set_trace()
+    env.flock((6,3), t=3)
 
-    # env.flock((2,2))
 
-    # env.flock_sense(1)
+def test_1a_3():
+    bot1 = Robot(4, 7)
+    bot2 = Robot(5, 4)
+    bot3 = Robot(6, 6)
+    bot4 = Robot(4, 4)
+    bot5 = Robot(5, 3)
+    bot6 = Robot(6, 7)
+    bot7 = Robot(7, 5)
+    bot8 = Robot(3, 6)
+    bot9 = Robot(5, 5)
 
-    # Write additional test cases here, and print some lines to document each visual.
+    bots = [bot1, bot2, bot3, bot4, bot5, bot6, bot7, bot8, bot9]
+
+    env = Env(bots, 8)
+
+    env.flock((5, 5), t=4)
+
+
+def test_1b_0():
+    bot1 = Robot(1,2)
+    bot2 = Robot(0,0)
+    bot3 = Robot(3,1)
+    bot4 = Robot(3,0)
+
+    bots = [bot1, bot2, bot3, bot4]
+
+    env = Env(bots, 4)
+
+    env.flock_sense(8)
+
+
+def test_1b_1():
+    bot1 = Robot(1,2)
+    bot2 = Robot(0,0)
+    bot3 = Robot(3,1)
+    bot4 = Robot(3,0)
+
+    bots = [bot1, bot2, bot3, bot4]
+
+    env = Env(bots, 4)
+
+    env.flock_sense(1)
+
+
+def test_1b_2():
+    bot1 = Robot(1,2)
+    bot2 = Robot(8,8)
+    bot3 = Robot(8,9)
+    bot4 = Robot(4,4)
+    bot5 = Robot(2,6)
+    bot6 = Robot(0,7)
+    bot7 = Robot(7,0)
+    bot8 = Robot(8,0)
+    bot9 = Robot(1,8)
+
+    bots = [bot1, bot2, bot3, bot4, bot5, bot6, bot7, bot8, bot9]
+
+    env = Env(bots, 10)
+
+    env.flock_sense(sense_r=5, t=1)
+
+
+def test_1b_3():
+    bot1 = Robot(1, 2)
+    bot2 = Robot(8, 8)
+    bot3 = Robot(8, 9)
+    bot4 = Robot(4, 4)
+    bot5 = Robot(2, 6)
+    bot6 = Robot(0, 7)
+    bot7 = Robot(7, 0)
+    bot8 = Robot(8, 0)
+    bot9 = Robot(1, 8)
+
+    bots = [bot1, bot2, bot3, bot4, bot5, bot6, bot7, bot8, bot9]
+
+    env = Env(bots, 10)
+
+    env.flock_sense(sense_r=3, t=2)
+
+
+def test_1b_4():
+    bot1 = Robot(4, 7)
+    bot2 = Robot(5, 4)
+    bot3 = Robot(6, 6)
+    bot4 = Robot(4, 4)
+    bot5 = Robot(5, 3)
+    bot6 = Robot(6, 7)
+    bot7 = Robot(7, 5)
+    bot8 = Robot(3, 6)
+    bot9 = Robot(5, 5)
+
+    bots = [bot1, bot2, bot3, bot4, bot5, bot6, bot7, bot8, bot9]
+
+    env = Env(bots, 8)
+
+    env.flock_sense(sense_r=2)
+
+
+def main():
+    # Uncomment for three tests/demonstrations for Q1A
+    test_1a_1()
+    # test_1a_2()
+    # test_1a_3()
+
+    # Uncomment for three tests/demonstrations for Q2A
+    # test_1b_0()
+    # test_1b_1()
+    # test_1b_2()
+    # test_1b_3()
+    # test_1b_4()
+    return
+
+
+if __name__ == "__main__":
+    # Uncomment desired test cases in main() function to see performance
+    main()

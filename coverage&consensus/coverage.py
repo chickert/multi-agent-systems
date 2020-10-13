@@ -7,14 +7,13 @@ import math
 
 class Robot(object):
 
-# CH: k was initialized to 0.1 but I changed it to see things change
     def __init__(self, state, k=0.1):
         self._state = state     # 2-vec
         self._stoch_state = self._state + np.random.randn(2)
         self.input = [0,0]      # movement vector later
 
         # self.k = k * 0.001
-        # CH: Changed this to speed things up
+        # Changed this to speed things up
         self.k = k * 1
 
     def update(self):     # update the robot state
@@ -25,7 +24,6 @@ class Robot(object):
     @property
     def state(self):
         return np.array(self._state)
-        # return np.array(self._stoch_state)
 
     @property
     def stoch_state(self):
@@ -78,8 +76,8 @@ class Environment(object):
         for bot in self.robots:
             # Here the second line adds stochasticity to the system by changing what the robot reports
             # The first line eliminates this stochasticity
-            # botstate_list.append(bot.state)
-            botstate_list.append(bot.stoch_state)
+            botstate_list.append(bot.state)
+            # botstate_list.append(bot.stoch_state)
             k_list.append(bot.k)
         botstate_array = np.array(botstate_list)
 
@@ -124,13 +122,18 @@ class Environment(object):
         boolean_mask = fs_over_g.astype(bool)
         parentheses_term = np.power(fs_over_g, (self.alpha - 1), out=np.zeros(len(fs_over_g)), where=boolean_mask)
 
-        # Now we find the
+        # Now we find the pdot_i for each bot.
+        # Note that we don't have to do the integral in Eqn. 4 explicitly here; since mix_func
+        # is called for every point below, and simply adds its pdot_i contribution via a moving sum to each
+        # bot's input value, it implicitly calculates the integral as-is.
         for i, bot in enumerate(self.robots):
             integrand = parentheses_term[i] * self.dist[:, i] * value
             pdot_i = self.global_k * integrand
             bot.input += pdot_i
 
     def update_gradient(self, iter=0):
+        # Uncomment the below if/else statements and rv (along with the second 'value' line in the nested for loops)
+        # to run the simulation with a target point (note that the target can be stationary or moving)
         # rv = None
         # if(type(self.target) is np.ndarray):
         #     rv = multivariate_normal(mean = self.target[:, iter], cov = self.cov)
@@ -140,6 +143,7 @@ class Environment(object):
         for x in self.pointsx:
             for y in self.pointsy:
                 value = 1
+                # Uncomment the below to run with a target point
                 # value = rv.pdf((x,y)) * (np.sqrt(np.power((2 * np.pi * rv.cov[0,0]), 2)))
                 self.mix_func(np.array([x, y]), value)
 
@@ -195,7 +199,6 @@ def run_grid(env, iter):
     plt.plot(b_x, b_y)        
 
     # set Voronoi
-    print(f'points: {points}')
     print("Setting Voronoi")
     vor = Voronoi(np.array(points))
     voronoi_plot_2d(vor, ax=ax)
@@ -227,23 +230,24 @@ if __name__ == "__main__":
     rob3 = Robot([5, 6])
     rob4 = Robot([3, 4])
 
-    # CH debugging
-    # rob1 = Robot([8.09, 5])
-    # rob2 = Robot([8.21, 5])
-    # rob3 = Robot([8.2, 5])
-    # rob4 = Robot([8.1, 5])
-
     robots = [rob1, rob2, rob3, rob4]
 
-    # Their test values
     # env = Environment(10, 10, 0.1, robots)
     # env = Environment(10, 10, 0.1, robots, target=(5,5))
     # run_grid(env, 5)
 
-    # CH: my debugging
+    # This code runs the basic case with no target point
+    # To run the stochastic case, uncomment the bot.stoch_state line in calc_g_alpha() above
     env = Environment(10, 10, 1, robots)
     run_grid(env, 200)
 
+    # This code runs the case in which there is a stationary target point
+    # MAKE SURE to also uncomment the appropriate section in update_gradient()
+    # env = Environment(10, 10, 0.5, robots, target=(5,5))
+    # run_grid(env, 200)
+
+    # Uncomment the below (AND ALSO the necessary parts in update_gradient())
+    # to run with the target point moving in a quarter-circle
     # period = 800
     # env = Environment(10, 10, 0.5, robots, target=target(center=(5,5), r=3, period=period))
     # run_grid(env, int(period * 0.25))
